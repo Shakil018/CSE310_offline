@@ -3,7 +3,7 @@
 %x CHAR_STATE
 %x STRING_STATE
 %x SINGLE_COMMENT_STATE
-%x MULTI COMMENT_STATE
+%x MULTI_COMMENT_STATE
 
 %{
 #include<iostream>
@@ -83,7 +83,7 @@ ILL_NUMBER_2 {DIGIT}*(\.)(E[+-]?{DIGIT}*)?
 <CHAR_STATE>\' {
 		yymore();
 		
-		char temp[(strlen(yytext)];
+		char temp[strlen(yytext)];
 		strcpy(temp, yytext);
 
 		char ch;
@@ -94,7 +94,7 @@ ILL_NUMBER_2 {DIGIT}*(\.)(E[+-]?{DIGIT}*)?
 		{	
 			error_count++;
 			fprintf(logout,"Error at line no %d: EError at line no 9: Empty character constant error '' %s\n\n",line_count,yytext);
-			BEGIN_INITIAL;
+			BEGIN INITIAL;
 		}
 		
 		
@@ -109,7 +109,7 @@ ILL_NUMBER_2 {DIGIT}*(\.)(E[+-]?{DIGIT}*)?
 				BEGIN INITIAL;
 			}
 
-		`	if(literal.length() >4)
+			if(literal.length() >4)
 			{
 				error_count++;
 				fprintf(logout,"Error at line no %d: Multi character constant error %s\n\n", line_count, yytext);
@@ -149,12 +149,22 @@ ILL_NUMBER_2 {DIGIT}*(\.)(E[+-]?{DIGIT}*)?
 						
 			string push(temp2);
 
-			symboltable.Insert(push, "CONST_CHAR");
-
-
-
 			fprintf(tokenout,"<CONST_CHAR,%c> ", ch);
 			fprintf(logout,"Line no %d: Token <CONST_CHAR> Lexeme %s found --> <CHAR_CONST, %c> ",line_count,yytext, ch);
+			
+			bool inserted = symboltable->Insert(push, "CONST_CHAR");
+
+			
+			if(inserted)
+			{
+				symboltable->print_all(logout);
+			}
+			else
+			{
+				fprintf(logout,"%s already exists in current ScopeTable\n\n", yytext);
+			}
+			
+			
 			BEGIN INITIAL;
 			}
 			else 
@@ -173,10 +183,22 @@ ILL_NUMBER_2 {DIGIT}*(\.)(E[+-]?{DIGIT}*)?
 						
 			string push(temp2);
 
-			symboltable.Insert(push, "CONST_CHAR");
+			
 
 			fprintf(tokenout,"<CONST_CHAR,%c> ", ch);
 			fprintf(logout,"Line no %d: Token <CONST_CHAR> Lexeme %s found --> <CHAR_CONST, %c> ",line_count,yytext, ch);
+			
+			bool inserted = symboltable->Insert(push, "CONST_CHAR");
+			
+			if(inserted)
+			{
+				symboltable->print_all(logout);
+			}
+			else
+			{
+				fprintf(logout,"%s already exists in current ScopeTable\n\n", yytext);
+			}
+			
 			BEGIN INITIAL;
 
 
@@ -200,7 +222,7 @@ ILL_NUMBER_2 {DIGIT}*(\.)(E[+-]?{DIGIT}*)?
 	}
 
 <SINGLE_COMMENT_STATE><<EOF>> {
-		BEGIN INITIAL;-
+		BEGIN INITIAL;
 			
 	}
 
@@ -225,6 +247,7 @@ ILL_NUMBER_2 {DIGIT}*(\.)(E[+-]?{DIGIT}*)?
 
 
 \/\* {
+	yymore();
 	BEGIN MULTI_COMMENT_STATE;
 	}
 
@@ -258,7 +281,7 @@ ILL_NUMBER_2 {DIGIT}*(\.)(E[+-]?{DIGIT}*)?
 
 
 {KEYWORDS} {
-		char temp[(strlen(yytext)];
+		char temp[strlen(yytext)];
 		strcpy(temp, yytext);
 
 		string upper(temp);
@@ -271,32 +294,55 @@ ILL_NUMBER_2 {DIGIT}*(\.)(E[+-]?{DIGIT}*)?
 		}
 
 		fprintf(tokenout,"<%s> ", upper.c_str());
-			fprintf(logout,"Line no %d: Token <%s> Lexeme %s found\n\n",line_count, upper.c_str(),yytext);
+		fprintf(logout,"Line no %d: Token <%s> Lexeme %s found\n\n",line_count, upper.c_str(),yytext);
 	}
 
 
 {INTEGER} {
-		char temp[(strlen(yytext)]
+		char temp[strlen(yytext)];
 		strcpy(temp, yytext);
 
 		string num(temp);		
 
-		symboltable->Insert(num, "CONST_INT");
+		
 		fprintf(tokenout,"<CONST_INT,%s> ",yytext);
 		fprintf(logout,"Line no %d: Token <CONST_INT> Lexeme %s found\n\n",line_count,yytext);
+		
+		bool inserted = symboltable->Insert(num, "CONST_INT");
+
+		
+		if(inserted)
+		{
+			symboltable->print_all(logout);
+		}
+		else
+		{
+			fprintf(logout,"%s already exists in current ScopeTable\n\n", yytext);
+		}
 
 }
 
 {FLOAT} {
-		char temp[(strlen(yytext)]
+		char temp[strlen(yytext)];
 		strcpy(temp, yytext);
 
 		string num(temp);		
 
-		symboltable->Insert(num, "CONST_FLOAT");
-
+		
 		fprintf(tokenout,"<CONST_FLOAT,%s> ",yytext);
 		fprintf(logout,"Line no %d: Token <CONST_FLOAT> Lexeme %s found\n\n",line_count,yytext);
+		
+		bool inserted = symboltable->Insert(num, "CONST_FLOAT");
+
+		
+		if(inserted)
+		{
+			symboltable->print_all(logout);
+		}
+		else
+		{
+			fprintf(logout,"%s already exists in current ScopeTable\n\n", yytext);
+		}
 		
 	}
 
@@ -434,8 +480,24 @@ ILL_NUMBER_2 {DIGIT}*(\.)(E[+-]?{DIGIT}*)?
 	}
 
 {ID} {
+
+		char temp[strlen(yytext)];
+		strcpy(temp, yytext);
+		string id(temp);		
+		
 		fprintf(tokenout,"<ID,%s> ",yytext);
 		fprintf(logout,"Line no %d: Token <ID> Lexeme %s found\n\n",line_count,yytext);
+		
+		bool inserted = symboltable->Insert(id, "ID");
+		
+		if(inserted)
+		{
+			symboltable->print_all(logout);
+		}
+		else
+		{
+			fprintf(logout,"%s already exists in current ScopeTable\n\n", yytext);
+		}
 	}
 
 
@@ -443,6 +505,9 @@ ILL_NUMBER_2 {DIGIT}*(\.)(E[+-]?{DIGIT}*)?
 		error_count++;
 		fprintf(logout,"Error at line no %d: Invalid prefix on ID or invalid suffix on Number %s\n\n",line_count,yytext);
 	}
+	
+	
+{WHITESPACE} {}
 
 . {
 		error_count;
@@ -470,6 +535,8 @@ int main(int argc,char *argv[]){
 
 	yyin= fin;
 	yylex();
+	
+	symboltable->print_all(logout);
 
 	fprintf(logout,"Total lines: %d\n",line_count);
 	fprintf(logout,"Total errors: %d",error_count);
