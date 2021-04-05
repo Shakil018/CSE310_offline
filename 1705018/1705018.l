@@ -5,7 +5,6 @@
 %x SINGLE_COMMENT_STATE
 %x MULTI_COMMENT_STATE
 
-
 %{
 #include<iostream>
 #include<algorithm>
@@ -26,7 +25,7 @@ SymbolTable *symboltable;
 WHITESPACE [ \t\f\r\v]+ 
 LETTER [a-zA-Z]
 DIGIT [0-9]
-NEWLINE \n
+NEWLINE (\n)|(\r\n)
 
 KEYWORDS "if"|"else"|"for"|"while"|"do"|"break"|"int"|"char"|"float"|"double"|"void"|"return"|"switch"|"case"|"default"|"continue"
 
@@ -64,6 +63,110 @@ ILL_NUMBER_2 {DIGIT}*(\.)(E[+-]?{DIGIT}*)?
 
 {NEWLINE} {line_count++;}
 
+
+
+
+\" {
+		yymore();
+		BEGIN STRING_STATE;
+	}
+	
+<STRING_STATE><<EOF>> {
+		error_count++;
+		fprintf(logout,"Error at line no %d: Unterminated String %s\n\n",line_count,yytext);
+		
+		BEGIN INITIAL;
+	}
+	
+<STRING_STATE>\\{NEWLINE} {
+		line_count++;
+		yymore();
+	}
+	
+<STRING_STATE>[^"\n] {
+		yymore();
+	}
+	
+	
+<STRING_STATE>(\") {
+
+
+		char temp_char[strlen(yytext)];
+		strcpy(temp_char, yytext);
+
+		string temp(temp_char), actual = "";
+		
+		for(int i=0; i<temp.length(); i++)
+		{
+			if(temp[i] == '\\')
+			{
+				if(i+1 >= temp.length())
+				{
+					actual += temp[i];
+					continue;
+				}
+				i++;
+				if(temp[i] == '\r' && i+1 < temp.length() && temp[i+1] == '\n')
+				{
+					i++;
+					continue;
+				}
+					
+				if(temp[i] == '\n')
+					continue;
+				else if(temp[i] == 'n')
+					actual += '\n';
+				else if(temp[i] == 't')
+					actual += '\t';
+				else if(temp[i] == '\\')
+					actual += '\\';
+				else if(temp[i] == '\'')
+					actual += '\'';
+				else if(temp[i] == 'a')
+					actual += '\a';
+				else if(temp[i] == 'f')
+					actual += '\f';
+				else if(temp[i] == 'r')
+					actual += '\r';
+				else if(temp[i] == 'b')
+					actual += '\b';
+				else if(temp[i] == 'v')
+					actual += '\v';
+				else if(temp[i] == '0')
+					actual += '\0';
+				
+				else if(temp[i] == '\"')
+					actual += '\"';
+				else 
+				{
+					i--;
+					actual += temp[i];
+				}
+				
+			}
+			else
+				actual += temp[i];
+			
+		}
+		
+		fprintf(tokenout,"<STRING,%s> ", actual.c_str());
+		fprintf(logout,"Line no %d: Token <STRING> Lexeme %s found --> <STRING, %s> \n\n",line_count,yytext, actual.c_str());
+		BEGIN INITIAL;
+	} 
+	
+<STRING_STATE>\n {
+		line_count++;
+		error_count++;
+		//fprintf(logout, "ami jhamela kortesi\n");
+		fprintf(logout,"Error at line no %d: Unterminated String %s\n\n",line_count,yytext);
+		
+		BEGIN INITIAL;
+		
+	}
+	
+	
+	
+
 \' {
 		yymore();
 		BEGIN CHAR_STATE;
@@ -82,7 +185,6 @@ ILL_NUMBER_2 {DIGIT}*(\.)(E[+-]?{DIGIT}*)?
 	}
 
 <CHAR_STATE>\' {
-		yymore();
 		
 		char temp[strlen(yytext)];
 		strcpy(temp, yytext);
@@ -94,12 +196,12 @@ ILL_NUMBER_2 {DIGIT}*(\.)(E[+-]?{DIGIT}*)?
 		if(literal.length() == 2)
 		{	
 			error_count++;
-			fprintf(logout,"Error at line no %d: EError at line no 9: Empty character constant error '' %s\n\n",line_count,yytext);
+			fprintf(logout,"Error at line no %d: Empty character constant error %s\n\n",line_count,yytext);
 			BEGIN INITIAL;
+			break;
+
 		}
 		
-		
-		bool done = false;
 		
 		if(literal[1] == '\\')
 		{
@@ -108,6 +210,7 @@ ILL_NUMBER_2 {DIGIT}*(\.)(E[+-]?{DIGIT}*)?
 				error_count++;
 				fprintf(logout,"Error at line no %d: Unterminated character %s\n\n", line_count, yytext);
 				BEGIN INITIAL;
+				break;
 			}
 
 			if(literal.length() >4)
@@ -115,6 +218,7 @@ ILL_NUMBER_2 {DIGIT}*(\.)(E[+-]?{DIGIT}*)?
 				error_count++;
 				fprintf(logout,"Error at line no %d: Multi character constant error %s\n\n", line_count, yytext);
 				BEGIN INITIAL;
+				break;
 			}
 			
 			bool is_literal = true;
@@ -145,32 +249,32 @@ ILL_NUMBER_2 {DIGIT}*(\.)(E[+-]?{DIGIT}*)?
 			if(is_literal)
 			{
 	
-			char temp2[strlen(yytext)];
-			strcpy(temp2, yytext);
+				char temp2[strlen(yytext)];
+				strcpy(temp2, yytext);
 						
-			string push(temp2);
+				string push(temp2);
 
-			fprintf(tokenout,"<CONST_CHAR,%c> ", ch);
-			fprintf(logout,"Line no %d: Token <CONST_CHAR> Lexeme %s found --> <CHAR_CONST, %c> ",line_count,yytext, ch);
+				fprintf(tokenout,"<CONST_CHAR,%c> ", ch);
+				fprintf(logout,"Line no %d: Token <CONST_CHAR> Lexeme %s found --> <CHAR_CONST, %c>\n\n",line_count,yytext, ch);
 			
-			bool inserted = symboltable->Insert(push, "CONST_CHAR");
+				bool inserted = symboltable->Insert(push, "CONST_CHAR");
 
 			
-			if(inserted)
-			{
-				symboltable->print_all(logout);
-			}
-			else
-			{
-				fprintf(logout,"%s already exists in current ScopeTable\n\n", yytext);
-			}
-			
-			
-			BEGIN INITIAL;
+				if(inserted)
+				{
+					symboltable->print_all(logout);
+				}
+				else
+				{
+					fprintf(logout,"%s already exists in current ScopeTable\n\n", yytext);
+				}
+				
+				
+				BEGIN INITIAL;
 			}
 			else 
 			{	
-				fprintf(logout,"Error at line no %d: Unknown character %s found",line_count,yytext);
+				fprintf(logout,"Error at line no %d: Unknown character %s found\n\n",line_count,yytext);
 			}
 			
 		
@@ -187,7 +291,7 @@ ILL_NUMBER_2 {DIGIT}*(\.)(E[+-]?{DIGIT}*)?
 			
 
 			fprintf(tokenout,"<CONST_CHAR,%c> ", ch);
-			fprintf(logout,"Line no %d: Token <CONST_CHAR> Lexeme %s found --> <CHAR_CONST, %c> ",line_count,yytext, ch);
+			fprintf(logout,"Line no %d: Token <CONST_CHAR> Lexeme %s found --> <CHAR_CONST, %c>\n\n",line_count,yytext, ch);
 			
 			bool inserted = symboltable->Insert(push, "CONST_CHAR");
 			
@@ -214,6 +318,19 @@ ILL_NUMBER_2 {DIGIT}*(\.)(E[+-]?{DIGIT}*)?
 		
 				
 	}
+	
+	
+<CHAR_STATE>[^\n] {
+		yymore();
+	}
+	
+<CHAR_STATE>\n {
+		line_count++;
+		error_count++;
+		
+		fprintf(logout,"Error at line no %d: Unterminated character %s\n\n", line_count, yytext);
+		BEGIN INITIAL;
+	}
 
 
 \/\/ {
@@ -227,19 +344,28 @@ ILL_NUMBER_2 {DIGIT}*(\.)(E[+-]?{DIGIT}*)?
 			
 	}
 
-<SINGLE_COMMENT_STATE>\\[\n] {
+<SINGLE_COMMENT_STATE>\\$ {
 		yymore();
 		line_count++;
 		}
 
-<SINGLE_COMMENT_STATE>[^\n] {
+<SINGLE_COMMENT_STATE>[^{NEWLINE}] {
 		yymore();	
 	}
 
-<SINGLE_COMMENT_STATE>\n {
+<SINGLE_COMMENT_STATE>{NEWLINE} {
+		char temp[strlen(yytext)];
+		strcpy(temp, yytext);
+
+		string comment(temp);
+		
+		//if(comment[comment.length()-1] == '\n')
+		comment.pop_back();
+		comment.pop_back();
+		
 		
 		line_count++;
-		fprintf(logout,"Line no %d: Token <COMMENT> Lexeme %s found\n\n",line_count,yytext);
+		fprintf(logout,"Line no %d: Token <COMMENT> Lexeme %s found\n\n",line_count,comment.c_str());
 
 		BEGIN INITIAL;
 	}
@@ -261,18 +387,21 @@ ILL_NUMBER_2 {DIGIT}*(\.)(E[+-]?{DIGIT}*)?
 		
 	}
 
-<MULTI_COMMENT_STATE>\n {
+<MULTI_COMMENT_STATE>{NEWLINE} {
 		yymore();
 		line_count++;
 	}
 
-<MULTI_COMMENT_STATE>[^(\*)(\/)] {
+<MULTI_COMMENT_STATE>[^\*\/] {
 		yymore();		
+	}
+	
+<MULTI_COMMENT_STATE>. {
+		yymore();
 	}
 
 
 <MULTI_COMMENT_STATE>(\*)(\/) {
-		yymore();
 		fprintf(logout,"Line no %d: Token <COMMENT> Lexeme %s found\n\n",line_count,yytext);
 		BEGIN INITIAL;		
 	}
