@@ -54,8 +54,8 @@ ID ({LETTER}|_)+({LETTER}|{DIGIT}|_)*
 
 INVALID_PREFIX_ID {DIGIT}+({LETTER}|_)({LETTER}|{DIGIT}|_)*
 
-TOO_MANY_DECIMAL {DIGIT}*(\.{DIGIT}*)(\.{DIGIT}*)+(.)*
-ILL_NUMBER_1 {DIGIT}*(\.{DIGIT}*)?(E[+-]?{DIGIT}*(\.))(.)*
+TOO_MANY_DECIMAL {DIGIT}*(\.{DIGIT}*)(\.{DIGIT}*)+{DIGIT}*
+ILL_NUMBER_1 {DIGIT}*(\.{DIGIT}*)?(E[+-]?{DIGIT}*(\.)){DIGIT}*
 ILL_NUMBER_2 {DIGIT}*(\.)(E[+-]?{DIGIT}*)?
 
 
@@ -84,6 +84,10 @@ ILL_NUMBER_2 {DIGIT}*(\.)(E[+-]?{DIGIT}*)?
 	}
 	
 <STRING_STATE>[^"\n] {
+		yymore();
+	}
+	
+<STRING_STATE>\\\" {
 		yymore();
 	}
 	
@@ -378,6 +382,19 @@ ILL_NUMBER_2 {DIGIT}*(\.)(E[+-]?{DIGIT}*)?
 	BEGIN MULTI_COMMENT_STATE;
 	}
 
+
+<MULTI_COMMENT_STATE>{NEWLINE} {
+		yymore();
+		line_count++;
+	}
+
+
+
+<MULTI_COMMENT_STATE>(\*)(\/) {
+		fprintf(logout,"Line no %d: Token <COMMENT> Lexeme %s found\n\n",line_count,yytext);
+		BEGIN INITIAL;		
+	}
+	
 <MULTI_COMMENT_STATE><<EOF>> {
 		error_count++;
 
@@ -386,11 +403,8 @@ ILL_NUMBER_2 {DIGIT}*(\.)(E[+-]?{DIGIT}*)?
 		BEGIN INITIAL;
 		
 	}
-
-<MULTI_COMMENT_STATE>{NEWLINE} {
-		yymore();
-		line_count++;
-	}
+	
+	
 
 <MULTI_COMMENT_STATE>[^\*\/] {
 		yymore();		
@@ -400,11 +414,6 @@ ILL_NUMBER_2 {DIGIT}*(\.)(E[+-]?{DIGIT}*)?
 		yymore();
 	}
 
-
-<MULTI_COMMENT_STATE>(\*)(\/) {
-		fprintf(logout,"Line no %d: Token <COMMENT> Lexeme %s found\n\n",line_count,yytext);
-		BEGIN INITIAL;		
-	}
 
 
 
