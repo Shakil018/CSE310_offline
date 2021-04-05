@@ -5,6 +5,7 @@
 %x SINGLE_COMMENT_STATE
 %x MULTI_COMMENT_STATE
 
+
 %{
 #include<iostream>
 #include<algorithm>
